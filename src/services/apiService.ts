@@ -7,32 +7,60 @@ import type {
 } from '../types';
 import { mockApi } from './api';
 
-// Use mock API for development/demo
-const USE_MOCK = true;
+// Usar API real por defecto, fallback a mock solo si falla
+const USE_MOCK = false;
 
 // API Base URL para el backend
-const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://tu-backend-hosting.com/api'  // Aquí pondrás tu backend cuando lo tengas
-  : 'http://localhost:3002/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Función auxiliar para hacer peticiones con fallback a mock
+async function apiRequestWithFallback(endpoint: string, options: RequestInit = {}) {
+  if (USE_MOCK) {
+    // Si está configurado para usar mock, usar directamente
+    throw new Error('Using mock API');
+  }
+
+  const token = localStorage.getItem('token');
+  const defaultHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    defaultHeaders.Authorization = `Bearer ${token}`;
+  }
+  
+  const config: RequestInit = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+  };
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return data;
+  } catch (error) {
+    console.warn(`API request failed for ${endpoint}, falling back to mock:`, error);
+    throw error; // Propagar error para que se use el fallback
+  }
+}
 
 // API de autenticación
 export const authApi = {
   // Login de usuario
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    if (USE_MOCK) {
-      return await mockApi.auth.login(credentials.email, credentials.password);
-    }
-    
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const data = await apiRequestWithFallback('/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(credentials),
       });
-
-      const data = await response.json();
       
       if (data.success && data.token) {
         localStorage.setItem('token', data.token);
@@ -41,10 +69,8 @@ export const authApi = {
       
       return data;
     } catch (error) {
-      return {
-        success: false,
-        message: 'Error de conexión con el servidor'
-      };
+      // Fallback a mock API
+      return await mockApi.auth.login(credentials.email, credentials.password);
     }
   },
 
@@ -128,24 +154,12 @@ export const authApi = {
 export const studentsApi = {
   // Obtener todos los estudiantes
   async getAll(): Promise<ApiResponse<Student[]>> {
-    if (USE_MOCK) {
-      return await mockApi.students.getAll();
-    }
-    
     try {
-      const response = await fetch(`${API_BASE_URL}/students`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
+      const data = await apiRequestWithFallback('/students');
       return data;
-    } catch (_error) {
-      return {
-        success: false,
-        error: 'Error obteniendo estudiantes'
-      };
+    } catch (error) {
+      // Fallback a mock API (que ahora devuelve array vacío)
+      return await mockApi.students.getAll();
     }
   },
 

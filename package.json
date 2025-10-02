@@ -10,8 +10,11 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "server:dev": "tsx watch server/index.ts",
+    "backend": "tsx server/backend.ts",
+    "backend:dev": "tsx watch server/backend.ts",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "build:full": "npm run build && npm run start"
+    "build:full": "npm run build && npm run start",
+    "dev:full": "concurrently \"npm run backend:dev\" \"npm run dev\""
   },
   "dependencies": {
     "@google/genai": "^1.21.0",
@@ -40,6 +43,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

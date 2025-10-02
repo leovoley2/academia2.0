@@ -1,33 +1,8 @@
 import type { PlanId } from '../types';
 
-const mockStudents = [
-  {
-    id: '1',
-    nombre: 'Juan Pérez',
-    email: 'juan@example.com',
-    telefono: '123456789',
-    fechaIngreso: '2024-01-15',
-    estado: 'activo' as const,
-    paymentDate: '2024-10-01',
-    nextBillingDate: '2024-11-01',
-    planId: 'four_times_a_week' as PlanId
-  },
-  {
-    id: '2',
-    nombre: 'María García',
-    email: 'maria@example.com',
-    telefono: '987654321',
-    fechaIngreso: '2024-02-01',
-    estado: 'activo' as const,
-    paymentDate: '2024-09-15',
-    nextBillingDate: '2024-10-15',
-    planId: 'twice_a_week' as PlanId
-  }
-];
-
 export const mockApi = {
   students: {
-    getAll: () => Promise.resolve({ success: true, data: mockStudents }),
+    getAll: () => Promise.resolve({ success: true, data: [] }), // Datos vacíos por defecto
     create: (student: Record<string, unknown>) => {
       const newStudent = { 
         id: Date.now().toString(),

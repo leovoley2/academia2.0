@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PLANS } from '../constants';
+import { PLANS, calculateNextBillingDate } from '../constants';
 import { PlanId } from '../types';
 
 interface StudentFormModalProps {
@@ -43,12 +43,44 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
     }
   }, [student]);
 
+  // Efecto para recalcular automáticamente la fecha de próximo cobro
+  useEffect(() => {
+    if (formData.paymentDate && formData.planId) {
+      const calculatedNextBilling = calculateNextBillingDate(formData.paymentDate, formData.planId);
+      setFormData(prev => ({
+        ...prev,
+        nextBillingDate: calculatedNextBilling
+      }));
+    }
+  }, [formData.paymentDate, formData.planId]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'paymentDate' || name === 'planId') {
+      // Recalcular cuando cambia la fecha de pago o el plan
+      const paymentDate = name === 'paymentDate' ? value : formData.paymentDate;
+      const planId = name === 'planId' ? value as PlanId : formData.planId;
+      
+      if (paymentDate && planId) {
+        const calculatedNextBilling = calculateNextBillingDate(paymentDate, planId);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          nextBillingDate: calculatedNextBilling
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,15 +146,18 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Fecha de Próximo Cobro
+              <span className="text-xs text-gray-500 ml-2">(calculado automáticamente)</span>
             </label>
             <input
               type="date"
               name="nextBillingDate"
               value={formData.nextBillingDate}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Se calcula al completar todas las clases del plan. Próximo cobro el día siguiente a la última clase o el siguiente día de entrenamiento.
+            </p>
           </div>
           
           <div className="mb-4">

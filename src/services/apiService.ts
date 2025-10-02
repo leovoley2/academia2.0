@@ -1,19 +1,28 @@
 import type { 
-  User, 
   Student, 
   LoginRequest, 
   RegisterRequest, 
   AuthResponse, 
   ApiResponse 
 } from '../types';
+import { mockApi } from './api';
+
+// Use mock API for development/demo
+const USE_MOCK = true;
 
 // API Base URL para el backend
-const API_BASE_URL = 'http://localhost:3002/api';
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://tu-backend-hosting.com/api'  // Aquí pondrás tu backend cuando lo tengas
+  : 'http://localhost:3002/api';
 
 // API de autenticación
 export const authApi = {
   // Login de usuario
   async login(credentials: LoginRequest): Promise<AuthResponse> {
+    if (USE_MOCK) {
+      return await mockApi.auth.login(credentials.email, credentials.password);
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -41,6 +50,10 @@ export const authApi = {
 
   // Registro de nuevo administrador
   async register(userData: RegisterRequest): Promise<AuthResponse> {
+    if (USE_MOCK) {
+      return await mockApi.auth.register(userData.email, userData.password);
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -115,6 +128,10 @@ export const authApi = {
 export const studentsApi = {
   // Obtener todos los estudiantes
   async getAll(): Promise<ApiResponse<Student[]>> {
+    if (USE_MOCK) {
+      return await mockApi.students.getAll();
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/students`, {
         headers: {
@@ -124,7 +141,7 @@ export const studentsApi = {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: 'Error obteniendo estudiantes'
@@ -134,6 +151,13 @@ export const studentsApi = {
 
   // Obtener estudiante por ID
   async getById(id: string): Promise<ApiResponse<Student>> {
+    if (USE_MOCK) {
+      // Para el mock, devolver el primer estudiante con el ID solicitado
+      const mockData = await mockApi.students.getAll();
+      const student = mockData.data.find((s: any) => s.id === id);
+      return student ? { success: true, data: student } : { success: false, error: 'Estudiante no encontrado' };
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/students/${id}`, {
         headers: {
@@ -143,7 +167,7 @@ export const studentsApi = {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: 'Error obteniendo estudiante'
@@ -153,6 +177,10 @@ export const studentsApi = {
 
   // Crear nuevo estudiante
   async create(student: Omit<Student, 'id'>): Promise<ApiResponse<Student>> {
+    if (USE_MOCK) {
+      return await mockApi.students.create(student);
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/students`, {
         method: 'POST',
@@ -165,7 +193,7 @@ export const studentsApi = {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: 'Error creando estudiante'
@@ -175,6 +203,10 @@ export const studentsApi = {
 
   // Actualizar estudiante
   async update(id: string, student: Partial<Student>): Promise<ApiResponse<Student>> {
+    if (USE_MOCK) {
+      return await mockApi.students.update(id, student);
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/students/${id}`, {
         method: 'PUT',
@@ -187,7 +219,7 @@ export const studentsApi = {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: 'Error actualizando estudiante'
@@ -197,6 +229,10 @@ export const studentsApi = {
 
   // Eliminar estudiante
   async delete(id: string): Promise<ApiResponse<void>> {
+    if (USE_MOCK) {
+      return await mockApi.students.delete(id);
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/students/${id}`, {
         method: 'DELETE',
@@ -207,7 +243,7 @@ export const studentsApi = {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: 'Error eliminando estudiante'

@@ -29,7 +29,7 @@ const IncomeChart: React.FC<IncomeChartProps> = ({ students }) => {
       if (!monthlyTotals[key]) {
         monthlyTotals[key] = 0;
       }
-      monthlyTotals[key] += PLANS[student.planId].price;
+      monthlyTotals[key] += student.planId ? PLANS[student.planId].price : 0;
     });
 
     const sortedKeys = Object.keys(monthlyTotals).sort();
@@ -71,7 +71,7 @@ const IncomeChart: React.FC<IncomeChartProps> = ({ students }) => {
           />
           <Legend />
           <Bar dataKey="ingresos" name="Ingresos (S/)" fill="#4f46e5">
-            {data.map((entry, index) => (
+            {data.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Bar>

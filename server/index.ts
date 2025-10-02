@@ -3,15 +3,22 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { connectDB } from '../src/config/database.js';
 import authRoutes from './routes/auth.js';
 import studentRoutes from './routes/students.js';
+
+// Configuración para ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Cargar variables de entorno
 dotenv.config();
 
 const app = express();
-const PORT = process.env.API_PORT || 3002;
+const PORT = process.env.PORT || 3002;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Configurar rate limiting
 const limiter = rateLimit({
@@ -24,13 +31,26 @@ const limiter = rateLimit({
 
 // Middleware
 app.use(helmet());
+
+// Configurar CORS para producción y desarrollo
+const allowedOrigins = NODE_ENV === 'production' 
+  ? ['https://academia-2-0.vercel.app', 'https://academia-2-0.netlify.app', process.env.FRONTEND_URL].filter(Boolean) as string[]
+  : ['http://localhost:5173', 'http://localhost:3000', process.env.APP_URL].filter(Boolean) as string[];
+
 app.use(cors({
-  origin: process.env.APP_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true
 }));
+
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos en producción
+if (NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+}
 
 // Conectar a MongoDB Atlas
 connectDB().catch(error => {
@@ -47,9 +67,18 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'Academia API funcionando correctamente',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV
   });
 });
+
+// Servir aplicación React en producción
+if (NODE_ENV === 'production') {
+  // Todas las rutas que no sean de API deben servir index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
 
 // Manejo de errores
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {

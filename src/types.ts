@@ -1,9 +1,12 @@
-﻿export enum PlanId {
-  ONCE_A_WEEK = "once_a_week",
-  TWICE_A_WEEK = "twice_a_week",
-  THRICE_A_WEEK = "thrice_a_week",
-  FOUR_TIMES_A_WEEK = "four_times_a_week",
-}
+﻿// Tipos básicos para planes
+export const PlanId = {
+  ONCE_A_WEEK: "once_a_week",
+  TWICE_A_WEEK: "twice_a_week",
+  THRICE_A_WEEK: "thrice_a_week",
+  FOUR_TIMES_A_WEEK: "four_times_a_week",
+} as const;
+
+export type PlanId = typeof PlanId[keyof typeof PlanId];
 
 export interface Plan {
   id: PlanId;
@@ -13,14 +16,21 @@ export interface Plan {
 }
 
 export interface Student {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  planId: PlanId;
-  paymentDate: string;
-  nextBillingDate: string;
-  avatarUrl: string;
+  _id?: string;
+  id?: string;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  curso: string;
+  fechaIngreso: string;
+  estado: 'activo' | 'inactivo';
+  createdAt?: string;
+  updatedAt?: string;
+  // Campos adicionales opcionales
+  planId?: PlanId;
+  paymentDate?: string;
+  nextBillingDate?: string;
+  avatarUrl?: string;
   isActive?: boolean;
   notes?: string;
   emergencyContact?: {
@@ -31,15 +41,22 @@ export interface Student {
 }
 
 export interface User {
-  id: string;
+  _id?: string;
+  id?: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: 'admin' | 'super_admin';
-  isActive?: boolean;
+  password?: string;
+  passwordHash?: string;
+  role: 'admin' | 'user' | 'super_admin';
   isVerified: boolean;
+  verificationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: number;
+  firstName?: string;
+  lastName?: string;
+  isActive?: boolean;
   lastLogin?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 // Tipos para autenticación
@@ -76,7 +93,7 @@ export interface Payment {
 }
 
 // Tipos para respuestas de API
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;

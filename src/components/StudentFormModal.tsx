@@ -1,29 +1,30 @@
-
 import React, { useState, useEffect } from 'react';
-import { PlusIcon } from './icons/PlusIcon';
-import type { Student } from '../types';
-import { PlanId } from '../types';
-import { PLANS } from '../constants';
 
 interface StudentFormModalProps {
-  student: Student | null;
-  onSave: (student: Student) => void;
+  student: any;
+  onSave: (student: any) => void;
   onClose: () => void;
 }
 
 const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, onClose }) => {
-  const [formData, setFormData] = useState<Omit<Student, 'id' | 'avatarUrl' | 'nextBillingDate'>>({
-    name: '',
-    planId: PlanId.ONCE_A_WEEK as PlanId,
-    paymentDate: new Date().toISOString().split('T')[0],
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    telefono: '',
+    curso: '',
+    fechaIngreso: new Date().toISOString().split('T')[0],
+    estado: 'activo',
   });
 
   useEffect(() => {
     if (student) {
       setFormData({
-        name: student.name,
-        planId: student.planId,
-        paymentDate: student.paymentDate,
+        nombre: student.nombre || '',
+        email: student.email || '',
+        telefono: student.telefono || '',
+        curso: student.curso || '',
+        fechaIngreso: student.fechaIngreso || new Date().toISOString().split('T')[0],
+        estado: student.estado || 'activo',
       });
     }
   }, [student]);
@@ -32,84 +33,82 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'planId' ? value as PlanId : value
+      [name]: value
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const nextBillingDate = new Date(formData.paymentDate + 'T00:00:00');
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
-    const studentToSave: Student = {
-      id: student?.id || new Date().getTime().toString(),
+    onSave({
+      ...student,
       ...formData,
-      nextBillingDate: nextBillingDate.toISOString().split('T')[0],
-      avatarUrl: student?.avatarUrl || `https://picsum.photos/seed/${formData.name.split(' ').join('')}/100/100`,
-    };
-    onSave(studentToSave);
+    });
+    onClose();
   };
-  
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-xl font-semibold">{student ? 'Editar Participante' : 'Agregar Participante'}</h3>
-        </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">
+          {student ? 'Editar Estudiante' : 'Agregar Estudiante'}
+        </h2>
+        
         <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo</label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="planId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Plan de Entrenamiento</label>
-              <select
-                name="planId"
-                id="planId"
-                value={formData.planId}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-              >
-                {Object.values(PLANS).map(plan => (
-                  <option key={plan.id} value={plan.id}>{plan.name} - S/ {plan.price}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Pago</label>
-              <input
-                type="date"
-                name="paymentDate"
-                id="paymentDate"
-                value={formData.paymentDate}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nombre
+            </label>
+            <input
+              type="text"
+              name="nombre"
+              value={formData.nombre}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
-          <div className="p-6 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Curso
+            </label>
+            <input
+              type="text"
+              name="curso"
+              value={formData.curso}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none"
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Guardar
+              {student ? 'Actualizar' : 'Agregar'}
             </button>
           </div>
         </form>

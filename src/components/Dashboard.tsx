@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Student } from '../types';
 import { PLANS } from '../constants';
-import { api } from '../services/api';
+import { studentsApi } from '../services/apiService';
 import StudentTable from './StudentTable';
 import StudentFormModal from './StudentFormModal';
 import IncomeChart from './IncomeChart';
@@ -24,8 +24,10 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   useEffect(() => {
     const fetchStudents = async () => {
       setIsLoading(true);
-      const fetchedStudents = await api.getStudents();
-      setStudents(fetchedStudents);
+      const response = await studentsApi.getAll();
+      if (response.success && response.data) {
+        setStudents(response.data);
+      }
       setIsLoading(false);
     };
     fetchStudents();
@@ -43,20 +45,28 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
   const handleDeleteStudent = useCallback(async (studentId: string) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar a este participante?')) {
-      await api.deleteStudent(studentId);
-      setStudents(prev => prev.filter(s => s.id !== studentId));
+      const response = await studentsApi.delete(studentId);
+      if (response.success) {
+        setStudents(prev => prev.filter(s => s.id !== studentId));
+      }
     }
   }, []);
 
   const handleSaveStudent = useCallback(async (student: Student) => {
-    const savedStudent = await api.saveStudent(student);
-    setStudents(prev => {
-      const existing = prev.find(s => s.id === savedStudent.id);
-      if (existing) {
-        return prev.map(s => s.id === savedStudent.id ? savedStudent : s);
-      }
-      return [...prev, savedStudent];
-    });
+    const response = student.id 
+      ? await studentsApi.update(student.id, student)
+      : await studentsApi.create(student);
+    
+    if (response.success && response.data) {
+      const savedStudent = response.data;
+      setStudents(prev => {
+        const existing = prev.find(s => s.id === savedStudent.id);
+        if (existing) {
+          return prev.map(s => s.id === savedStudent.id ? savedStudent : s);
+        }
+        return [...prev, savedStudent];
+      });
+    }
     setIsModalOpen(false);
   }, []);
 
@@ -72,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     return students.reduce((acc, student) => {
         const paymentDate = new Date(student.paymentDate + 'T00:00:00');
         if (paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear) {
-            return acc + PLANS[student.planId].price;
+            return acc + (student.planId ? PLANS[student.planId].price : 0);
         }
         return acc;
     }, 0);

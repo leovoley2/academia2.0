@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "tsx server/index.ts",
-    "server:dev": "tsx watch server/index.ts"
+    "server:dev": "tsx watch server/index.ts",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "build:full": "npm run build && npm run start"
   },
   "dependencies": {
     "@google/genai": "^1.21.0",

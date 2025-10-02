@@ -21,7 +21,7 @@ export interface Student {
   nombre: string;
   email: string;
   telefono?: string;
-  curso: string;
+  curso?: string;
   fechaIngreso: string;
   estado: 'activo' | 'inactivo';
   createdAt?: string;

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { PLANS } from '../constants';
+import { PlanId } from '../types';
 
 interface StudentFormModalProps {
   student: any;
@@ -14,6 +16,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
     curso: '',
     fechaIngreso: new Date().toISOString().split('T')[0],
     estado: 'activo',
+    planId: PlanId.ONCE_A_WEEK,
   });
 
   useEffect(() => {
@@ -25,6 +28,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
         curso: student.curso || '',
         fechaIngreso: student.fechaIngreso || new Date().toISOString().split('T')[0],
         estado: student.estado || 'activo',
+        planId: student.planId || PlanId.ONCE_A_WEEK,
       });
     }
   }, [student]);
@@ -39,10 +43,18 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
+    const studentData = {
       ...student,
       ...formData,
-    });
+      // Si es un nuevo estudiante, agregar fecha de pago automáticamente
+      paymentDate: student ? student.paymentDate : new Date().toISOString().split('T')[0],
+      nextBillingDate: student ? student.nextBillingDate : (() => {
+        const nextDate = new Date();
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        return nextDate.toISOString().split('T')[0];
+      })(),
+    };
+    onSave(studentData);
     onClose();
   };
 
@@ -94,6 +106,25 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ student, onSave, on
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Plan de Entrenamiento
+            </label>
+            <select
+              name="planId"
+              value={formData.planId}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              {Object.values(PLANS).map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name} - S/ {plan.price}/mes
+                </option>
+              ))}
+            </select>
           </div>
           
           <div className="flex justify-end space-x-3">

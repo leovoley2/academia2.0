@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<string>('');
   const [authView, setAuthView] = useState<AuthView>('login');
+  const [registrationSuccess, setRegistrationSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const handleRegister = useCallback(async (userData: RegisterRequest): Promise<string | undefined> => {
     const response = await authApi.register(userData);
     if (response.success) {
+      setRegistrationSuccess(true);
       setAuthView('login');
       return undefined;
     } else {
@@ -65,10 +67,14 @@ const App: React.FC = () => {
         return (
           <Login
             onLogin={handleLogin}
-            onSwitchToRegister={() => setAuthView('register')}
+            onSwitchToRegister={() => {
+              setRegistrationSuccess(false);
+              setAuthView('register');
+            }}
             onForgotPassword={() => {
               alert('Funcionalidad pendiente');
             }}
+            successMessage={registrationSuccess ? '¡Usuario registrado exitosamente! Ahora puedes iniciar sesión.' : undefined}
           />
         );
     }

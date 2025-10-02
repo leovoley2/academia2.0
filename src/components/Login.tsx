@@ -4,9 +4,10 @@ interface LoginProps {
   onLogin: (email: string, password: string) => Promise<string | undefined>;
   onSwitchToRegister: () => void;
   onForgotPassword: () => void;
+  successMessage?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister, onForgotPassword }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister, onForgotPassword, successMessage }) => {
   const [email, setEmail] = useState<string>('admin@example.com');
   const [password, setPassword] = useState<string>('password');
   const [error, setError] = useState<string>('');
@@ -78,6 +79,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister, onForgotPass
             </div>
           </div>
           
+          {successMessage && <p className="text-sm text-green-600 text-center bg-green-100 dark:bg-green-900 dark:text-green-200 px-3 py-2 rounded-md">{successMessage}</p>}
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
           <div>

@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 
 interface RegisterProps {
-    onRegister: (email: string, password: string) => Promise<string | undefined>;
     onSwitchToLogin: () => void;
 }
 
-const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
+const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [confirmPassword, setConfirmPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [registrationSuccess, setRegistrationSuccess] = useState<boolean>(false);
 
     const validatePassword = (password: string): boolean => {
       // Requisito: Al menos 8 caracteres, una mayúscula, una minúscula y un número.
@@ -33,22 +33,65 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
         }
 
         setIsLoading(true);
-        const registerError = await onRegister(email, password);
-        setIsLoading(false);
+        
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
 
-        if (registerError) {
-            setError(registerError);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Error al registrar usuario');
+            }
+
+            setRegistrationSuccess(true);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Error al registrar usuario';
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-                <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-                        Crear una cuenta
-                    </h2>
-                </div>
+                {registrationSuccess ? (
+                    <div className="text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900">
+                            <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                            ¡Registro Exitoso!
+                        </h2>
+                        <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                            Te hemos enviado un correo de verificación a <strong>{email}</strong>. 
+                            Por favor, revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
+                        </p>
+                        <div className="mt-6">
+                            <button 
+                                onClick={onSwitchToLogin}
+                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                Ir al Inicio de Sesión
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div>
+                            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                                Crear una cuenta
+                            </h2>
+                        </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
@@ -116,6 +159,8 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
                         </button>
                     </div>
                 </form>
+                </>
+                )}
             </div>
         </div>
     );

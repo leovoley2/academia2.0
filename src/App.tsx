@@ -1,80 +1,91 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import Login from './components/Login';
-import AdminRegister from './components/AdminRegister';
+import Register from './components/Register';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
+import EmailVerification from './components/EmailVerification';
 import Dashboard from './components/Dashboard';
-import { authApi } from './services/apiService';
-import type { RegisterRequest } from './types';
 
-type AuthView = 'login' | 'register';
+type AuthView = 'login' | 'register' | 'forgot-password' | 'reset-password' | 'email-verification';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<string>('');
   const [authView, setAuthView] = useState<AuthView>('login');
-  const [registrationSuccess, setRegistrationSuccess] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const result = await authApi.verifyToken();
-      if (result.success && result.user) {
+    const checkAuth = () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // TODO: Verify token with backend
         setIsAuthenticated(true);
-        setCurrentUser(result.user.email);
+        // TODO: Get user info from token or API
       }
     };
     checkAuth();
   }, []);
 
-  const handleLogin = useCallback(async (email: string, password: string): Promise<string | undefined> => {
-    const response = await authApi.login({ email, password });
-    if (response.success && response.user) {
-      setIsAuthenticated(true);
-      setCurrentUser(response.user.email);
-      return undefined;
-    } else {
-      return response.message || 'Error de inicio de sesión';
-    }
+  const handleLoginSuccess = useCallback((token: string) => {
+    localStorage.setItem('authToken', token);
+    setIsAuthenticated(true);
+    setCurrentUser('user@example.com'); // TODO: Get actual user info
   }, []);
 
-  const handleRegister = useCallback(async (userData: RegisterRequest): Promise<string | undefined> => {
-    const response = await authApi.register(userData);
-    if (response.success) {
-      setRegistrationSuccess(true);
-      setAuthView('login');
-      return undefined;
-    } else {
-      return response.message || 'Error de registro';
-    }
-  }, []);
-
-  const handleLogout = useCallback(async () => {
-    await authApi.logout();
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('authToken');
     setIsAuthenticated(false);
     setCurrentUser('');
     setAuthView('login');
+    setSuccessMessage('');
   }, []);
 
   const renderAuthView = () => {
     switch (authView) {
       case 'register':
         return (
-          <AdminRegister
-            onRegister={handleRegister}
+          <Register
+            onSwitchToLogin={() => {
+              setAuthView('login');
+              setSuccessMessage('¡Usuario registrado exitosamente! Revisa tu correo para verificar tu cuenta.');
+            }}
+          />
+        );
+      case 'forgot-password':
+        return (
+          <ForgotPassword
             onSwitchToLogin={() => setAuthView('login')}
+          />
+        );
+      case 'reset-password':
+        return (
+          <ResetPassword
+            onSwitchToLogin={() => {
+              setAuthView('login');
+              setSuccessMessage('Contraseña restablecida exitosamente. Puedes iniciar sesión con tu nueva contraseña.');
+            }}
+          />
+        );
+      case 'email-verification':
+        return (
+          <EmailVerification
+            onBackToLogin={() => {
+              setAuthView('login');
+              setSuccessMessage('Email verificado exitosamente. Ahora puedes iniciar sesión.');
+            }}
           />
         );
       case 'login':
       default:
         return (
           <Login
-            onLogin={handleLogin}
+            onLoginSuccess={handleLoginSuccess}
             onSwitchToRegister={() => {
-              setRegistrationSuccess(false);
+              setSuccessMessage('');
               setAuthView('register');
             }}
-            onForgotPassword={() => {
-              alert('Funcionalidad pendiente');
-            }}
-            successMessage={registrationSuccess ? '¡Usuario registrado exitosamente! Ahora puedes iniciar sesión.' : undefined}
+            onForgotPassword={() => setAuthView('forgot-password')}
+            successMessage={successMessage || undefined}
           />
         );
     }

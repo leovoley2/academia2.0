@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => Promise<string | undefined>;
+  onLoginSuccess: (token: string) => void;
   onSwitchToRegister: () => void;
   onForgotPassword: () => void;
   successMessage?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister, onForgotPassword, successMessage }) => {
+const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister, onForgotPassword, successMessage }) => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -17,10 +17,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister, onForgotPass
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    const loginError = await onLogin(email, password);
-    setIsLoading(false);
-    if (loginError) {
-      setError(loginError);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al iniciar sesión');
+      }
+
+      // Save token to localStorage
+      localStorage.setItem('authToken', data.token);
+      onLoginSuccess(data.token);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 

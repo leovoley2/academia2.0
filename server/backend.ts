@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import { sendVerificationEmail, sendPasswordResetEmail, generateSecureToken } from './emailService';
 
 // Configurar variables de entorno
 dotenv.config();
@@ -35,7 +37,11 @@ const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   role: { type: String, enum: ['admin', 'super_admin'], default: 'admin' },
-  isVerified: { type: Boolean, default: true },
+  isVerified: { type: Boolean, default: false },
+  verificationToken: { type: String },
+  verificationTokenExpires: { type: Date },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -76,26 +82,50 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Por seguridad en demo, aceptar credenciales específicas
-    if (email === 'admin@academia.com' && password === 'admin123') {
-      const token = 'demo-token-' + Date.now();
-      res.json({
-        success: true,
-        user: {
-          id: '1',
-          email,
-          role: 'admin',
-          isVerified: true
-        },
-        token
-      });
-    } else {
-      res.status(401).json({
+    // Buscar usuario en la base de datos
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      return res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'
       });
     }
+    
+    // Verificar contraseña
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+    
+    // Verificar si el email está verificado
+    if (!user.isVerified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.'
+      });
+    }
+    
+    const token = 'jwt-token-' + Date.now(); // En producción, usar JWT real
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVerified: user.isVerified
+      },
+      token
+    });
+    
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({
       success: false,
       message: 'Error del servidor'
@@ -107,22 +137,186 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
     
-    // Crear usuario (en demo, solo simular)
-    const token = 'demo-token-' + Date.now();
-    res.json({
-      success: true,
-      user: {
-        id: Date.now().toString(),
-        email,
-        role: role || 'admin',
-        isVerified: true
-      },
-      token
+    // Validar que no exista el usuario
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe una cuenta con este email'
+      });
+    }
+    
+    // Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 12);
+    
+    // Generar token de verificación
+    const verificationToken = generateSecureToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    
+    // Crear usuario
+    const user = new User({
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      firstName,
+      lastName,
+      role: role || 'admin',
+      isVerified: false,
+      verificationToken,
+      verificationTokenExpires: verificationExpires
     });
+    
+    await user.save();
+    
+    // Enviar email de verificación
+    const emailResult = await sendVerificationEmail(email, verificationToken, firstName);
+    
+    if (emailResult.success) {
+      res.json({
+        success: true,
+        message: `Cuenta creada exitosamente. Te hemos enviado un email de verificación a ${email}. Revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.`,
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          isVerified: user.isVerified
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Cuenta creada pero no se pudo enviar el email de verificación. Contacta al administrador.'
+      });
+    }
+    
   } catch (error) {
+    console.error('Error en registro:', error);
     res.status(500).json({
       success: false,
       message: 'Error creando usuario'
+    });
+  }
+});
+
+// Ruta para verificar email
+app.post('/api/auth/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de verificación inválido o expirado'
+      });
+    }
+    
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: '¡Email verificado exitosamente! Ya puedes iniciar sesión.'
+    });
+    
+  } catch (error) {
+    console.error('Error verificando email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
+    });
+  }
+});
+
+// Ruta para solicitar reset de contraseña
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      // Por seguridad, no revelar si el email existe o no
+      return res.json({
+        success: true,
+        message: 'Si el email existe en nuestro sistema, recibirás instrucciones para restablecer tu contraseña.'
+      });
+    }
+    
+    // Generar token de reset
+    const resetToken = generateSecureToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = resetExpires;
+    await user.save();
+    
+    // Enviar email de reset
+    const emailResult = await sendPasswordResetEmail(email, resetToken, user.firstName);
+    
+    if (emailResult.success) {
+      res.json({
+        success: true,
+        message: 'Te hemos enviado un email con instrucciones para restablecer tu contraseña.'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error enviando email. Intenta de nuevo más tarde.'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error en forgot password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
+    });
+  }
+});
+
+// Ruta para restablecer contraseña
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de reset inválido o expirado'
+      });
+    }
+    
+    // Encriptar nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    user.password = hashedPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.'
+    });
+    
+  } catch (error) {
+    console.error('Error en reset password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 });

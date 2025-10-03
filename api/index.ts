@@ -22,10 +22,13 @@ app.use(cors({
 const connectDB = async () => {
   try {
     const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/academia';
+    console.log('🔗 Intentando conectar a MongoDB...', MONGODB_URI ? 'URI configurada' : 'URI no configurada');
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Conectado a MongoDB');
+    console.log('✅ Conectado a MongoDB exitosamente');
+    return true;
   } catch (error) {
     console.error('❌ Error conectando a MongoDB:', error);
+    return false;
   }
 };
 
@@ -84,8 +87,26 @@ const authenticateToken = (req: any, res: any, next: any) => {
   }
 };
 
+// Middleware para asegurar conexión a DB
+const ensureDBConnection = async (req: any, res: any, next: any) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      console.log('⚠️ Reconectando a MongoDB...');
+      await connectDB();
+    }
+    next();
+  } catch (error: any) {
+    console.error('❌ Error de conexión a DB:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error de conexión a la base de datos',
+      error: error.message
+    });
+  }
+};
+
 // Rutas de autenticación
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', ensureDBConnection, async (req, res) => {
   try {
     const { email, password, firstName = 'Usuario', lastName = 'Academia' } = req.body;
     
@@ -147,9 +168,32 @@ app.post('/api/auth/register', async (req, res) => {
 
   } catch (error) {
     console.error('Error en registro:', error);
+    
+    // Proporcionar más detalles del error para debugging
+    let errorMessage = 'Error del servidor';
+    
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Errores específicos de MongoDB
+      if (error.name === 'ValidationError') {
+        errorMessage = 'Error de validación en los datos';
+      } else if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+        errorMessage = 'Error de conexión a la base de datos';
+      } else if (error.message.includes('duplicate key')) {
+        errorMessage = 'El email ya está registrado';
+      }
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Error del servidor'
+      message: errorMessage,
+      // En desarrollo, incluir más detalles
+      ...(process.env.NODE_ENV !== 'production' && { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      })
     });
   }
 });
@@ -298,13 +342,28 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Academia API funcionando correctamente',
-    timestamp: new Date().toISOString() 
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbConnected = await connectDB();
+    res.json({ 
+      status: 'OK', 
+      message: 'Academia API funcionando correctamente',
+      timestamp: new Date().toISOString(),
+      database: dbConnected ? 'Conectada' : 'Desconectada'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Error en health check',
+      error: error.message
+    });
+  }
 });
+
+// Aplicar middleware de DB a rutas que lo necesiten
+app.use('/api/auth/register', ensureDBConnection);
+app.use('/api/auth/login', ensureDBConnection);
+app.use('/api/students', ensureDBConnection);
 
 // Ruta 404
 app.use((req, res) => {

@@ -30,5 +30,11 @@
     "server/index.ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/server/index.ts"
+    }
+  ]
 }

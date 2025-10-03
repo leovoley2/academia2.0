@@ -1,0 +1,14 @@
+# Archivos y directorios a ignorar en Vercel
+node_modules
+.env
+.env.local
+.env.development
+.git
+.gitignore
+README.md
+test-*.js
+*.log
+.vscode
+.DS_Store
+src/**/*.test.*
+src/**/*.spec.*

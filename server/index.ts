@@ -34,7 +34,13 @@ app.use(helmet());
 
 // Configurar CORS para producción y desarrollo
 const allowedOrigins = NODE_ENV === 'production' 
-  ? ['https://academia-2-0.vercel.app', 'https://academia-2-0.netlify.app', process.env.FRONTEND_URL].filter(Boolean) as string[]
+  ? [
+      process.env.FRONTEND_URL,
+      'https://academia-2-0.vercel.app', 
+      'https://gestiondeacademia.netlify.app',
+      // Permitir cualquier subdominio de vercel.app
+      /^https:\/\/.*\.vercel\.app$/,
+    ].filter(Boolean) as (string | RegExp)[]
   : ['http://localhost:5173', 'http://localhost:3000', process.env.APP_URL].filter(Boolean) as string[];
 
 app.use(cors({

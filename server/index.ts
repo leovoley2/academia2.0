@@ -5,9 +5,9 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectDB } from '../src/config/database.js';
-import authRoutes from './routes/auth.js';
-import studentRoutes from './routes/students.js';
+import { connectDB } from '../src/config/database';
+import authRoutes from './routes/auth';
+import studentRoutes from './routes/students';
 
 // Configuración para ES modules
 const __filename = fileURLToPath(import.meta.url);

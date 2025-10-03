@@ -1,6 +1,6 @@
 import express from 'express';
-import { Student } from '../../src/models/Student.js';
-import type { Student as StudentType, ApiResponse, PlanId } from '../../src/types.js';
+import { Student } from '../../src/models/Student';
+import type { Student as StudentType, ApiResponse, PlanId } from '../../src/types';
 
 const router = express.Router();
 

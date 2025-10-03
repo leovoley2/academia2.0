@@ -13,8 +13,15 @@ const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://academia-2-0.vercel.app',
+  process.env.FRONTEND_URL
+].filter((origin): origin is string => Boolean(origin));
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

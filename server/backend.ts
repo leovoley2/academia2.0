@@ -3,6 +3,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { sendVerificationEmail, sendPasswordResetEmail, generateSecureToken } from './emailService';
 
 // Configurar variables de entorno
@@ -51,7 +52,11 @@ const studentSchema = new mongoose.Schema({
   telefono: { type: String },
   fechaIngreso: { type: String, required: true },
   estado: { type: String, enum: ['activo', 'inactivo'], default: 'activo' },
-  planId: { type: String, required: true },
+  planId: { 
+    type: String, 
+    required: true,
+    enum: ['once_a_week', 'twice_a_week', 'thrice_a_week', 'four_times_a_week']
+  },
   paymentDate: { type: String, required: true },
   nextBillingDate: { type: String, required: true },
   avatarUrl: { type: String },
@@ -62,8 +67,8 @@ const studentSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Student = mongoose.model('Student', studentSchema);
 
-// Middleware de autenticación simple
-const authenticateToken = (req: any, res: any, next: any) => {
+// Middleware de autenticación JWT
+const authenticateToken = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
@@ -71,10 +76,14 @@ const authenticateToken = (req: any, res: any, next: any) => {
     return res.status(401).json({ success: false, message: 'Token de acceso requerido' });
   }
   
-  // En un entorno real, aquí verificarías el JWT
-  // Por ahora, aceptamos cualquier token para demo
-  req.user = { id: 'demo-user' };
-  next();
+  try {
+    const JWT_SECRET = process.env.JWT_SECRET || 'academia-dev-secret-key-2024';
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    (req as any).user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ success: false, message: 'Token inválido' });
+  }
 };
 
 // Rutas de autenticación
@@ -109,8 +118,19 @@ app.post('/api/auth/login', async (req, res) => {
         message: 'Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.'
       });
     }
+
+    // Generar JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'academia-dev-secret-key-2024';
+    const tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      role: user.role
+    };
     
-    const token = 'jwt-token-' + Date.now(); // En producción, usar JWT real
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { 
+      expiresIn: '7d'
+    });
+    
     res.json({
       success: true,
       user: {
@@ -137,6 +157,14 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
     
+    // Validar campos requeridos mínimos
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email y contraseña son requeridos'
+      });
+    }
+    
     // Validar que no exista el usuario
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
@@ -157,10 +185,10 @@ app.post('/api/auth/register', async (req, res) => {
     const user = new User({
       email: email.toLowerCase(),
       password: hashedPassword,
-      firstName,
-      lastName,
+      firstName: firstName || 'Usuario',
+      lastName: lastName || 'Academia',
       role: role || 'admin',
-      isVerified: false,
+      isVerified: false, // Siempre requerir verificación
       verificationToken,
       verificationTokenExpires: verificationExpires
     });
@@ -168,7 +196,9 @@ app.post('/api/auth/register', async (req, res) => {
     await user.save();
     
     // Enviar email de verificación
-    const emailResult = await sendVerificationEmail(email, verificationToken, firstName);
+    console.log(`📧 Intentando enviar email de verificación a: ${email}`);
+    const emailResult = await sendVerificationEmail(email, verificationToken, firstName || 'Usuario');
+    console.log(`📧 Resultado del envío de email:`, emailResult);
     
     if (emailResult.success) {
       res.json({
@@ -186,7 +216,7 @@ app.post('/api/auth/register', async (req, res) => {
     } else {
       res.status(500).json({
         success: false,
-        message: 'Cuenta creada pero no se pudo enviar el email de verificación. Contacta al administrador.'
+        message: `Cuenta creada pero no se pudo enviar el email de verificación. Error: ${emailResult.error || 'Desconocido'}`
       });
     }
     
@@ -228,6 +258,39 @@ app.post('/api/auth/verify-email', async (req, res) => {
     
   } catch (error) {
     console.error('Error verificando email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
+    });
+  }
+});
+
+// Ruta para verificar token JWT
+app.get('/api/auth/verify', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const user = await User.findById(userId).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Error verificando usuario:', error);
     res.status(500).json({
       success: false,
       message: 'Error del servidor'

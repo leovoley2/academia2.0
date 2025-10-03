@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface LoginProps {
-  onLoginSuccess: (token: string) => void;
+  onLoginSuccess: (token: string, userData?: any) => void;
   onSwitchToRegister: () => void;
   onForgotPassword: () => void;
   successMessage?: string;
@@ -19,7 +19,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister, onFor
     setIsLoading(true);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -36,7 +36,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister, onFor
 
       // Save token to localStorage
       localStorage.setItem('authToken', data.token);
-      onLoginSuccess(data.token);
+      onLoginSuccess(data.token, data.user);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
       setError(errorMessage);

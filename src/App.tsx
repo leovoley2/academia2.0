@@ -15,21 +15,42 @@ const App: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string>('');
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const token = localStorage.getItem('authToken');
       if (token) {
-        // TODO: Verify token with backend
-        setIsAuthenticated(true);
-        // TODO: Get user info from token or API
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+          const response = await fetch(`${API_URL}/auth/verify`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setIsAuthenticated(true);
+            setCurrentUser(data.user?.email || 'user@example.com');
+          } else {
+            // Token inválido, limpiar localStorage
+            localStorage.removeItem('authToken');
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error('Error verifying token:', error);
+          localStorage.removeItem('authToken');
+          setIsAuthenticated(false);
+        }
       }
     };
     checkAuth();
   }, []);
 
-  const handleLoginSuccess = useCallback((token: string) => {
+  const handleLoginSuccess = useCallback((token: string, userData?: any) => {
     localStorage.setItem('authToken', token);
     setIsAuthenticated(true);
-    setCurrentUser('user@example.com'); // TODO: Get actual user info
+    setCurrentUser(userData?.email || 'user@example.com');
   }, []);
 
   const handleLogout = useCallback(() => {

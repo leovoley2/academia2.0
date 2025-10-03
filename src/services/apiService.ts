@@ -20,7 +20,7 @@ async function apiRequestWithFallback(endpoint: string, options: RequestInit = {
     throw new Error('Using mock API');
   }
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('authToken');
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -105,13 +105,13 @@ export const authApi = {
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
     } catch (error) {
       // Error no crítico en logout
     } finally {
-      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
     }
   },
@@ -119,7 +119,7 @@ export const authApi = {
   // Verificar token
   async verifyToken(): Promise<AuthResponse> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       
       if (!token) {
         return {
@@ -175,7 +175,7 @@ export const studentsApi = {
     try {
       const response = await fetch(`${API_BASE_URL}/students/${id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 
@@ -200,7 +200,7 @@ export const studentsApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify(student),
       });
@@ -226,7 +226,7 @@ export const studentsApi = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify(student),
       });
@@ -251,7 +251,7 @@ export const studentsApi = {
       const response = await fetch(`${API_BASE_URL}/students/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 

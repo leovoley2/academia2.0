@@ -21,9 +21,22 @@ app.use(cors({
 // Conectar a MongoDB
 const connectDB = async () => {
   try {
+    // Si ya estamos conectados, no reconectar
+    if (mongoose.connection.readyState === 1) {
+      console.log('✅ MongoDB ya está conectado');
+      return true;
+    }
+    
     const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/academia';
-    console.log('🔗 Intentando conectar a MongoDB...', MONGODB_URI ? 'URI configurada' : 'URI no configurada');
-    await mongoose.connect(MONGODB_URI);
+    console.log('🔗 Intentando conectar a MongoDB...', MONGODB_URI.includes('mongodb') ? 'URI válida' : 'URI inválida');
+    
+    // Configuración específica para serverless
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout de 5 segundos
+      maxPoolSize: 10, // Máximo 10 conexiones
+      bufferCommands: false // Deshabilitar buffering
+    });
+    
     console.log('✅ Conectado a MongoDB exitosamente');
     return true;
   } catch (error) {
@@ -90,9 +103,18 @@ const authenticateToken = (req: any, res: any, next: any) => {
 // Middleware para asegurar conexión a DB
 const ensureDBConnection = async (req: any, res: any, next: any) => {
   try {
+    console.log('🔍 Verificando conexión a DB...');
+    console.log('Estado actual de MongoDB:', mongoose.connection.readyState);
+    // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    
     if (mongoose.connection.readyState !== 1) {
       console.log('⚠️ Reconectando a MongoDB...');
-      await connectDB();
+      const connected = await connectDB();
+      if (!connected) {
+        throw new Error('No se pudo conectar a MongoDB');
+      }
+    } else {
+      console.log('✅ DB ya conectada');
     }
     next();
   } catch (error: any) {

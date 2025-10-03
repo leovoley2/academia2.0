@@ -108,27 +108,34 @@ const ensureDBConnection = async (req: any, res: any, next: any) => {
 // Rutas de autenticación
 app.post('/api/auth/register', ensureDBConnection, async (req, res) => {
   try {
+    console.log('📝 Iniciando proceso de registro...');
     const { email, password, firstName = 'Usuario', lastName = 'Academia' } = req.body;
+    console.log('📧 Email recibido:', email);
     
     if (!email || !password) {
+      console.log('❌ Faltan datos requeridos');
       return res.status(400).json({
         success: false,
         message: 'Email y contraseña son requeridos'
       });
     }
 
+    console.log('🔍 Verificando usuario existente...');
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      console.log('❌ Usuario ya existe');
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado'
       });
     }
 
+    console.log('🔐 Encriptando contraseña...');
     // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    console.log('👤 Creando usuario...');
     // Crear usuario
     const user = new User({
       email: email.toLowerCase(),
@@ -138,8 +145,11 @@ app.post('/api/auth/register', ensureDBConnection, async (req, res) => {
       isVerified: true // Auto-verificar para simplificar
     });
 
+    console.log('💾 Guardando usuario en DB...');
     await user.save();
+    console.log('✅ Usuario guardado exitosamente');
 
+    console.log('🎫 Generando JWT token...');
     // Generar JWT token
     const JWT_SECRET = process.env.JWT_SECRET || 'academia-dev-secret-key-2024';
     const token = jwt.sign(
@@ -152,6 +162,7 @@ app.post('/api/auth/register', ensureDBConnection, async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    console.log('🎉 Registro completado exitosamente');
     res.json({
       success: true,
       message: 'Usuario registrado exitosamente',

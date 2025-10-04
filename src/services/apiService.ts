@@ -11,7 +11,22 @@ import { mockApi } from './api';
 const USE_MOCK = false;
 
 // API Base URL para el backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const getApiBaseUrl = () => {
+  // Si estamos en desarrollo y hay VITE_API_URL configurada, usarla
+  if (import.meta.env.DEV && import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Si estamos en producción, usar la misma URL base + /api
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  
+  // Fallback para desarrollo
+  return 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Función auxiliar para hacer peticiones con fallback a mock
 async function apiRequestWithFallback(endpoint: string, options: RequestInit = {}) {
@@ -150,12 +165,31 @@ export const authApi = {
   }
 };
 
-// API de estudiantes
+// Función auxiliar para mapear _id a id
+function mapStudentData(student: any): Student {
+  if (!student) return student;
+  
+  return {
+    ...student,
+    id: student._id || student.id, // Mapear _id a id
+  };
+}
+
+// Función auxiliar para mapear arrays de estudiantes
+function mapStudentsData(students: any[]): Student[] {
+  if (!Array.isArray(students)) return [];
+  return students.map(mapStudentData);
+}
+
+// API para estudiantes
 export const studentsApi = {
   // Obtener todos los estudiantes
   async getAll(): Promise<ApiResponse<Student[]>> {
     try {
       const data = await apiRequestWithFallback('/students');
+      if (data.success && data.data) {
+        data.data = mapStudentsData(data.data);
+      }
       return data;
     } catch (error) {
       // Fallback a mock API (que ahora devuelve array vacío)
@@ -180,6 +214,9 @@ export const studentsApi = {
       });
 
       const data = await response.json();
+      if (data.success && data.data) {
+        data.data = mapStudentData(data.data);
+      }
       return data;
     } catch (_error) {
       return {
@@ -206,6 +243,9 @@ export const studentsApi = {
       });
 
       const data = await response.json();
+      if (data.success && data.data) {
+        data.data = mapStudentData(data.data);
+      }
       return data;
     } catch (_error) {
       return {
@@ -232,6 +272,9 @@ export const studentsApi = {
       });
 
       const data = await response.json();
+      if (data.success && data.data) {
+        data.data = mapStudentData(data.data);
+      }
       return data;
     } catch (_error) {
       return {

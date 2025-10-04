@@ -53,21 +53,36 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   }, []);
 
   const handleSaveStudent = useCallback(async (student: Student) => {
-    const response = student.id 
-      ? await studentsApi.update(student.id, student)
-      : await studentsApi.create(student);
-    
-    if (response.success && response.data) {
-      const savedStudent = response.data;
-      setStudents(prev => {
-        const existing = prev.find(s => s.id === savedStudent.id);
-        if (existing) {
-          return prev.map(s => s.id === savedStudent.id ? savedStudent : s);
-        }
-        return [...prev, savedStudent];
-      });
+    try {
+      console.log('🔄 Guardando estudiante:', student);
+      
+      const response = student.id 
+        ? await studentsApi.update(student.id, student)
+        : await studentsApi.create(student);
+      
+      console.log('📊 Respuesta de guardado:', response);
+      
+      if (response.success && response.data) {
+        const savedStudent = response.data;
+        console.log('✅ Estudiante guardado:', savedStudent);
+        
+        setStudents(prev => {
+          const existing = prev.find(s => s.id === savedStudent.id);
+          if (existing) {
+            return prev.map(s => s.id === savedStudent.id ? savedStudent : s);
+          }
+          return [...prev, savedStudent];
+        });
+        
+        setIsModalOpen(false);
+      } else {
+        console.error('❌ Error guardando estudiante:', response);
+        alert(`Error: ${response.error || 'No se pudo guardar el estudiante'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      alert('Error inesperado al guardar el estudiante');
     }
-    setIsModalOpen(false);
   }, []);
 
   const handlePrint = () => {

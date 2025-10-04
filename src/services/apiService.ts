@@ -239,16 +239,11 @@ export const studentsApi = {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/students`, {
+      const data = await apiRequestWithFallback('/students', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
         body: JSON.stringify(student),
       });
-
-      const data = await response.json();
+      
       if (data.success && data.data) {
         data.data = mapStudentData(data.data);
       }
@@ -268,16 +263,11 @@ export const studentsApi = {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+      const data = await apiRequestWithFallback(`/students/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
         body: JSON.stringify(student),
       });
-
-      const data = await response.json();
+      
       if (data.success && data.data) {
         data.data = mapStudentData(data.data);
       }
@@ -297,14 +287,9 @@ export const studentsApi = {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+      const data = await apiRequestWithFallback(`/students/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
       });
-
-      const data = await response.json();
       return data;
     } catch (_error) {
       return {

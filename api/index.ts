@@ -264,28 +264,44 @@ app.post('/api/auth/register', ensureDBConnection, async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', ensureDBConnection, async (req, res) => {
   try {
+    console.log('🔐 Iniciando proceso de login...');
     const { email, password } = req.body;
+    console.log('📧 Email recibido:', email);
     
+    if (!email || !password) {
+      console.log('❌ Faltan credenciales');
+      return res.status(400).json({
+        success: false,
+        message: 'Email y contraseña son requeridos'
+      });
+    }
+
+    console.log('🔍 Buscando usuario...');
     const user = await User.findOne({ email: email.toLowerCase() });
     
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciales inválidas'
-      });
-    }
-    
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    
-    if (!isValidPassword) {
+      console.log('❌ Usuario no encontrado');
       return res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'
       });
     }
 
+    console.log('🔐 Verificando contraseña...');
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log('✅ Contraseña válida');
+
+    if (!isValidPassword) {
+      console.log('❌ Contraseña incorrecta');
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    console.log('🎫 Generando token...');
     const JWT_SECRET = process.env.JWT_SECRET || 'academia-dev-secret-key-2024';
     const token = jwt.sign(
       {
@@ -297,6 +313,7 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
+    console.log('🎉 Login completado exitosamente');
     res.json({
       success: true,
       user: {
@@ -311,10 +328,27 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error('❌ Error en login:', error);
+    
+    let errorMessage = 'Error del servidor';
+    
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      
+      // Errores específicos
+      if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+        errorMessage = 'Error de conexión a la base de datos';
+      }
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Error del servidor'
+      message: errorMessage,
+      // En desarrollo, incluir más detalles
+      ...(process.env.NODE_ENV !== 'production' && { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      })
     });
   }
 });

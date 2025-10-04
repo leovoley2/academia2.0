@@ -378,11 +378,22 @@ app.delete('/api/students/:id', authenticateToken, async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const dbConnected = await connectDB();
+    
+    // Debug info para variables de entorno
+    const mongoUri = process.env.MONGODB_URI;
+    const hasMongoUri = !!mongoUri;
+    const mongoUriPrefix = mongoUri ? mongoUri.substring(0, 20) + '...' : 'No configurada';
+    
     res.json({ 
       status: 'OK', 
       message: 'Academia API funcionando correctamente',
       timestamp: new Date().toISOString(),
-      database: dbConnected ? 'Conectada' : 'Desconectada'
+      database: dbConnected ? 'Conectada' : 'Desconectada',
+      environment: {
+        hasMongoUri,
+        mongoUriPrefix,
+        nodeEnv: process.env.NODE_ENV || 'development'
+      }
     });
   } catch (error: any) {
     res.status(500).json({

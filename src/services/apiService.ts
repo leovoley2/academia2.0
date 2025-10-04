@@ -78,7 +78,7 @@ export const authApi = {
       });
       
       if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('authToken', data.token); // Usar 'authToken' consistentemente
         localStorage.setItem('user', JSON.stringify(data.user));
       }
       
@@ -105,6 +105,12 @@ export const authApi = {
       });
 
       const data = await response.json();
+      
+      if (data.success && data.token) {
+        localStorage.setItem('authToken', data.token); // Usar 'authToken' consistentemente
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+      
       return data;
     } catch (error) {
       return {
